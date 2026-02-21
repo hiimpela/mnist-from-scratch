@@ -1,7 +1,7 @@
 import pygame as pg
 import numpy as np
 import json
-import network2
+import network
 from scipy import ndimage
 
 pg.init()
@@ -13,7 +13,7 @@ drawing_surf.fill((0, 0, 0))
 
 with open("trained_model.json", "r") as f:
     data = json.load(f)
-net = network2.network(data["sizes"])
+net = network.network(data["sizes"])
 net.weights = [np.array(w) for w in data["weights"]]
 net.biases = [np.array(b) for b in data["biases"]]
 

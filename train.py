@@ -1,9 +1,9 @@
 import mnist_loader
 training_data, validation_data, test_data = mnist_loader.load_data_wrapper(expand = True)
-import network2
-net = network2.network([784, 800, 10], cost=network2.cross_entropy)
+import ml.mnist.network as network
+net = network.network([784, 800, 10], cost=network.cross_entropy)
 net.sgd(training_data = training_data, 
-        epochs = 60, 
+        epochs = 0, 
         mini_batch_size = 128, 
         eta = 0.05, #learning rate 
         lmbda = 5.0, 
