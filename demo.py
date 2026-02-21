@@ -1,123 +1,82 @@
 import pygame as pg
 import numpy as np
-import mnist_loader
-import pickle
-import cv2
-import network1
+import json
+import network2
+from scipy import ndimage
+
 pg.init()
-pg.font.init()
-font = pg.font.SysFont("Arial", 40)
+screen = pg.display.set_mode((600, 800))
+clock = pg.time.Clock()
+font = pg.font.SysFont("Arial", 32)
+drawing_surf = pg.Surface((448, 448))
+drawing_surf.fill((0, 0, 0))
+
+with open("trained_model.json", "r") as f:
+    data = json.load(f)
+net = network2.network(data["sizes"])
+net.weights = [np.array(w) for w in data["weights"]]
+net.biases = [np.array(b) for b in data["biases"]]
+
+def get_processed_input(surf):
+    img_28 = pg.transform.smoothscale(surf, (28, 28))
+    arr = pg.surfarray.array3d(img_28)
+    gray = np.dot(arr[..., :3], [0.299, 0.587, 0.114]).T / 255.0
     
-screen = pg.display.set_mode((490, 600))
-
-class square():
-    def __init__(self, x, y):
-        self.pos = (x, y)
-        self.x = x
-        self.y = y
-        self.color = (255,255,255)
-    def update(self):
-        mouse = pg.mouse.get_pos()
-        pressed = pg.mouse.get_pressed()
-
-        mouse_left = (mouse[0] - 15, mouse[1])
-        mouse_right = (mouse[0] + 15, mouse[1])
-        mouse_up = (mouse[0], mouse[1] + 15)
-        mouse_down = (mouse[0], mouse[1] - 15)
-
-        grey_val = 140
-
-        #
-        if(self.x <= mouse[0] and self.x + 20 >= mouse[0] and self.y <= mouse[1] and self.y + 20 >= mouse[1] and pressed == (1, 0, 0)):
-            self.color = (0, 0, 0)
-            
-        if(self.x <= mouse[0] and self.x + 15 >= mouse[0] and self.y <= mouse[1] and self.y + 15 >= mouse[1] and pressed == (0, 0, 1)):
-            self.color = (255, 255, 255)
+    if np.max(gray) > 0:
+        gray = gray / np.max(gray)
         
-    def draw(self, screen):
-        pg.draw.rect(screen, self.color, (self.x, self.y, 15, 15)) 
-        
-
-grid = []
-for i in range(0, 28):
-    row = []
-    y = 20 + i * 16
-    for j in range(0, 28):
-        x = 20 + j * 16
-        s = square(x = x, y = y)
-        row.append(s)
-    grid.append(row)
-
-def reset_board():
-    for r in grid:
-        for x in r:
-            x.color = (255, 255, 255)
-
-class reset_button():
-    def __init__(self, x, y):
-        self.x = x
-        self.y = y
-        self.color = (143, 22, 22)
-
-    def update(self):
-        mouse = pg.mouse.get_pos()
-        pressed = pg.mouse.get_pressed()
-        if(self.x <= mouse[0] and self.x + 140 >= mouse[0] and self.y <= mouse[1] and self.y + 70 >= mouse[1] and pressed == (1, 0, 0)):
-            reset_board()
-
-    def draw(self, screen):
-        pg.draw.rect(screen, self.color, (self.x, self.y, 140, 70)) 
-
-def vectorize_grid():
-    input = []
-    for row in grid:
-        for sqaure in row:
-            grayscale = 1.0 - (sqaure.color[0] / 255)
-            input.append(grayscale)
-    return np.reshape(input, (784, 1))
-
-def enhanced_vectorize_grid():
+    if np.sum(gray) > 0.1:
+        cy, cx = ndimage.center_of_mass(gray)
+        shift_y, shift_x = 13.5 - cy, 13.5 - cx
+        gray = ndimage.shift(gray, (shift_y, shift_x), mode='constant', cval=0)
     
-    input = []
-    for row in grid:
-        for square in row:
-            grayscale = 1.0 - (square.color[0] / 255.0)
-            if 1:
-                grayscale = 1.0 if grayscale > 0.3 else 0.0  # remove noise
-            input.append(grayscale)
-    return np.reshape(input, (784, 1))
+    return gray.clip(0, 1)
 
-with open("trained_network.pkl", "rb") as f:
-    net = pickle.load(f)
+def draw_brush(surf, pos):
+    for r in range(25, 0, -5):
+        alpha = int(255 * (1 - (r / 30)))
+        pg.draw.circle(surf, (alpha, alpha, alpha), pos, r)
 
-rb = reset_button(20, 500)        
-
-
+drawing = False
+prediction = 0
+preview_img = np.zeros((28, 28))
 running = True
+
 while running:
     for event in pg.event.get():
         if event.type == pg.QUIT:
             running = False
-    screen.fill((100, 100, 200))
+        elif event.type == pg.MOUSEBUTTONDOWN:
+            if pg.Rect(76, 50, 448, 448).collidepoint(event.pos):
+                drawing = True
+            if pg.Rect(230, 720, 140, 45).collidepoint(event.pos):
+                drawing_surf.fill((0, 0, 0))
+                preview_img = np.zeros((28, 28))
+        elif event.type == pg.MOUSEBUTTONUP:
+            drawing = False
+            processed = get_processed_input(drawing_surf)
+            preview_img = processed
+            prediction = np.argmax(net.feedforward(processed.reshape(784, 1)))
 
-    for row in grid:
-        for sq in row:
-            sq.update()
-            sq.draw(screen)
+    if drawing:
+        m_pos = pg.mouse.get_pos()
+        if pg.Rect(76, 50, 448, 448).collidepoint(m_pos):
+            draw_brush(drawing_surf, (m_pos[0] - 76, m_pos[1] - 50))
+
+    screen.fill((25, 25, 30))
+    pg.draw.rect(screen, (255, 255, 255), (74, 48, 452, 452), 2)
+    screen.blit(drawing_surf, (76, 50))
     
-    rb.draw(screen)
-    rb.update()
-
-    input = vectorize_grid()
-    output = net.feedforward(input)
-    prediction = np.argmax(output)
-
-    text_surface = font.render(f"Prediction: {prediction}", True, (255, 255, 255))
-    screen.blit(text_surface, (200, 510))
+    preview_pixels = np.repeat((preview_img.T * 255)[:, :, np.newaxis], 3, axis=2)
+    preview_surf = pg.surfarray.make_surface(preview_pixels.astype(np.uint8))
+    preview_surf = pg.transform.scale(preview_surf, (112, 112))
+    screen.blit(preview_surf, (76, 520))
+    
+    screen.blit(font.render(f"Prediction: {prediction}", True, (0, 255, 150)), (230, 550))
+    pg.draw.rect(screen, (150, 30, 30), (230, 720, 140, 45))
+    screen.blit(font.render("Clear", True, (255, 255, 255)), (265, 722))
 
     pg.display.flip()
-
-
-
+    clock.tick(60)
 
 pg.quit()
