@@ -49,3 +49,11 @@ To train the model from scratch, execute the training script.
 python train.py
 ```
 This configures a network with the architecture `[784, 800, 10]`, a learning rate ($\eta$) of 0.05, and L2 regularization ($\lambda$) of 5.0. The trained model state is saved to `trained_model.json` upon completion.
+
+## Model Performance
+
+The pre-trained model (`trained_model.json`) included in this repository achieves the following baseline performance on the unseen MNIST test dataset:
+
+* **Test Accuracy:** 98.82%
+* **Architecture:** 784 Input -> 800 Hidden (ReLU) -> 10 Output (Softmax)
+* **Hyperparameters:** Learning Rate (eta) = 0.05, L2 Regularization (lambda) = 5.0, Batch Size = 128
