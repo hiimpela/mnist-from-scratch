@@ -1,4 +1,4 @@
-import ml.mnist.network as network
+import network as network
 import mnist_loader
 
 _, _, test_data = mnist_loader.load_data_wrapper()
