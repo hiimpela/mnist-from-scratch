@@ -1,6 +1,4 @@
 __pycache__
 network1.py
 test.py
-testt.py
-train.py
-trained_network.pkl 
+train_old.py
