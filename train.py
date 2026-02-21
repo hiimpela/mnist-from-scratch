@@ -1,6 +1,6 @@
 import mnist_loader
 training_data, validation_data, test_data = mnist_loader.load_data_wrapper(expand = True)
-import ml.mnist.network as network
+import network as network
 net = network.network([784, 800, 10], cost=network.cross_entropy)
 net.sgd(training_data = training_data, 
         epochs = 0, 
