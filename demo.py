@@ -3,15 +3,19 @@ import numpy as np
 import json
 import network
 from scipy import ndimage
+from pathlib import Path
 
 pg.init()
-screen = pg.display.set_mode((600, 800))
+screen = pg.display.set_mode((900, 1200))
 clock = pg.time.Clock()
-font = pg.font.SysFont("Arial", 32)
-drawing_surf = pg.Surface((448, 448))
+font = pg.font.SysFont("Arial", 48)
+drawing_surf = pg.Surface((672, 672))
 drawing_surf.fill((0, 0, 0))
 
-with open("trained_model.json", "r") as f:
+script_dir = Path(__file__).parent.resolve()
+model_path = script_dir / "trained_model.json"
+
+with open(model_path, "r") as f:
     data = json.load(f)
 net = network.network(data["sizes"])
 net.weights = [np.array(w) for w in data["weights"]]
@@ -33,8 +37,8 @@ def get_processed_input(surf):
     return gray.clip(0, 1)
 
 def draw_brush(surf, pos):
-    for r in range(25, 0, -5):
-        alpha = int(255 * (1 - (r / 30)))
+    for r in range(37, 0, -7):
+        alpha = int(255 * (1 - (r / 45)))
         pg.draw.circle(surf, (alpha, alpha, alpha), pos, r)
 
 drawing = False
@@ -47,9 +51,9 @@ while running:
         if event.type == pg.QUIT:
             running = False
         elif event.type == pg.MOUSEBUTTONDOWN:
-            if pg.Rect(76, 50, 448, 448).collidepoint(event.pos):
+            if pg.Rect(114, 75, 672, 672).collidepoint(event.pos):
                 drawing = True
-            if pg.Rect(230, 720, 140, 45).collidepoint(event.pos):
+            if pg.Rect(345, 1080, 210, 67).collidepoint(event.pos):
                 drawing_surf.fill((0, 0, 0))
                 preview_img = np.zeros((28, 28))
         elif event.type == pg.MOUSEBUTTONUP:
@@ -60,21 +64,21 @@ while running:
 
     if drawing:
         m_pos = pg.mouse.get_pos()
-        if pg.Rect(76, 50, 448, 448).collidepoint(m_pos):
-            draw_brush(drawing_surf, (m_pos[0] - 76, m_pos[1] - 50))
+        if pg.Rect(114, 75, 672, 672).collidepoint(m_pos):
+            draw_brush(drawing_surf, (m_pos[0] - 114, m_pos[1] - 75))
 
     screen.fill((25, 25, 30))
-    pg.draw.rect(screen, (255, 255, 255), (74, 48, 452, 452), 2)
-    screen.blit(drawing_surf, (76, 50))
+    pg.draw.rect(screen, (255, 255, 255), (111, 72, 678, 678), 3)
+    screen.blit(drawing_surf, (114, 75))
     
     preview_pixels = np.repeat((preview_img.T * 255)[:, :, np.newaxis], 3, axis=2)
     preview_surf = pg.surfarray.make_surface(preview_pixels.astype(np.uint8))
-    preview_surf = pg.transform.scale(preview_surf, (112, 112))
-    screen.blit(preview_surf, (76, 520))
+    preview_surf = pg.transform.scale(preview_surf, (168, 168))
+    screen.blit(preview_surf, (114, 780))
     
-    screen.blit(font.render(f"Prediction: {prediction}", True, (0, 255, 150)), (230, 550))
-    pg.draw.rect(screen, (150, 30, 30), (230, 720, 140, 45))
-    screen.blit(font.render("Clear", True, (255, 255, 255)), (265, 722))
+    screen.blit(font.render(f"Prediction: {prediction}", True, (0, 255, 150)), (345, 825))
+    pg.draw.rect(screen, (150, 30, 30), (345, 1080, 210, 67))
+    screen.blit(font.render("Clear", True, (255, 255, 255)), (397, 1083))
 
     pg.display.flip()
     clock.tick(60)
